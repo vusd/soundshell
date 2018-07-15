@@ -111,8 +111,8 @@ def runLoop():
 # a class to handle playback
 class PlaybackEngine():
     def __init__(self):
-        instance = vlc.Instance()
-        self.player = instance.media_player_new()
+        self.chunk = 1024
+        # self.player = instance.media_player_new()
 
     def playAll(self, poem, verbose=False):
         if type(poem) is list:
@@ -120,39 +120,45 @@ class PlaybackEngine():
                 if verbose is True:
                     print("----------------------------------------")
                     print(p.author,": ", p.title, " : ", p.total_duration)
-                for i, media in enumerate(p.media):
+                for i, media in enumerate(p.rec_paths):
                     if verbose is True:
                         print(p.text[i], " : ", p.durations[i])
-                    self.player.set_media(media)
-                    self.player.play()
-                    time.sleep(p.durations[i])
+                    self.playPart(p, i)
         elif type(poem) is Poem:
             self.playTitle(poem)
             if verbose is True:
                 print(poem.author, ": ", poem.title, " : ", poem.total_duration)
-            for i, media in enumerate(poem.media):
+            for i, media in enumerate(poem.rec_paths):
                 if verbose is True:
                     print(poem.text[i])
-                self.player.set_media(media)
-                self.player.play()
-                time.sleep(poem.durations[i])
+                    self.playPart(poem, i)
         else:
             print("Please pass a Poem object into the play function")
 
     def playPart(self, poem, part, verbose=False):
+        p = pyaudio.PyAudio()
         if verbose is True:
             print(poem.author,": ", poem.title,
                   " : line number ", part, " : ", poem.text[part])
-        self.player.set_media(poem.media[part])
-        self.player.play()
-        time.sleep(poem.durations[part])
+        f = wave.open(r""+poem.rec_paths[part],"rb")
+        stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
+                        channels=f.getnchannels(),
+                        rate=f.getframerate(),
+                        output=True)
+        data = f.readframes(self.chunk)
+        while data:
+            stream.write(data)
+            data = f.readframes(self.chunk)
+
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        # time.sleep(poem.durations[part])
 
     def playTitle(self, poem, verbose=False):
         if verbose is True:
             print("poet: ", poem.author," : ", poem.title)
-        self.player.set_media(poem.media[0])
-        self.player.play()
-        time.sleep(poem.durations[0])
+        self.playPart(poem, 0)
 
 class Poem():
     def __init__(self, first_line):
@@ -170,9 +176,8 @@ class Poem():
         self.author = a[:last_name_index] + " " + a[last_name_index:]
 
         # for keeping track of the media
-        self.media = []
+        # self.media = []
         self.total_duration = None
-        self.instance = vlc.Instance()
 
         with contextlib.closing(wave.open(self.rec_paths[0],'r')) as f:
             frames = f.getnframes()
@@ -180,7 +185,7 @@ class Poem():
             self.durations.append(frames / float(rate))
 
         self.total_duration = self.calculateTotalDuration(self.durations)
-        self.media.append(self.instance.media_new(self.rec_paths[-1]))
+        # self.media.append(self.instance.media_new(self.rec_paths[-1]))
 
     def calculateTotalDuration(self, durs):
         total_duration = 0.0
@@ -198,7 +203,7 @@ class Poem():
             rate = f.getframerate()
             self.durations.append(frames / float(rate))
 
-        self.media.append(self.instance.media_new(self.rec_paths[-1]))
+        # self.media.append(self.instance.media_new(self.rec_paths[-1]))
         self.total_duration = self.calculateTotalDuration(self.durations)
 
     def printStats(self, verbose=2):
@@ -209,7 +214,7 @@ class Poem():
         print("full text : ", self.full_text)
         print("dur  : ", self.durations[:verbose])
         print("total duration : ", self.total_duration)
-        print("media : ", self.media[:verbose])
+        # print("media : ", self.media[:verbose])
 
 def loadCSV(csv_file):
     with open(csv_file, 'r') as f:
