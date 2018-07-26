@@ -1,6 +1,7 @@
 import serial
 import time
 import glob
+import random
 
 
 def connectToArduino():
@@ -23,9 +24,20 @@ def connectToArduino():
     arduino = serial.Serial(arduino_port, 9600)
     return arduino
 
+def sendToArduino(msg):
+    msg = str(msg).encode()
+    print("msg is : ", type(msg), " ", msg)
+    for m in msg:
+        arduino.write(m)
+    arduino.write('\n')
+
 arduino = connectToArduino()
 # take note that each string ends with \n this is needed for the protocol to work
 # also note how there is a "b" before the start of each string this is also needed
 
 while True:
-    print (arduino.readline()) # print out the arduinos response (should be message)
+    test_color = random.randint(0, 255)
+    print("test color is : ", test_color)
+    # print (arduino.readline()) # print out the arduinos response (should be message)
+    sendToArduino(test_color)
+    time.sleep(0.5)

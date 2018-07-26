@@ -13,8 +13,7 @@ import pyttsx3
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
-# def setup():
-"""
+
 def roboVoice(statement):
     engine = pyttsx3.init();
     rate = engine.getProperty('rate')
@@ -23,10 +22,8 @@ def roboVoice(statement):
     engine.setProperty('voice', 'en-uk-rp')
     engine.say(statement)
     engine.runAndWait()
-"""
 
-print("Voiceshell starting...")
-# roboVoice("Ahem. Starting...")
+
 def meanv(coords):
     sumv = [0] * len(coords[0])
     for item in coords:
@@ -37,16 +34,19 @@ def meanv(coords):
         mean[i] = float(sumv[i]) / len(coords)
     return mean
 
+
 def cosine(v1, v2):
     if norm(v1) > 0 and norm(v2) > 0:
         return dot(v1, v2) / (norm(v1) * norm(v2))
     else:
         return 0.0
 
+
 def sentvec(s):
     sent = nlp(s)
     word_vectors = [w.vector for w in sent]
     return meanv(word_vectors)
+
 
 def spacy_closest_sent(space, input_str, n=1):
     input_vec = sentvec(input_str)
@@ -56,7 +56,7 @@ def spacy_closest_sent(space, input_str, n=1):
 nlp = spacy.load('en')
 
 print("Loading text...")
-# roboVoice("Loading text files...")
+roboVoice("Loading text files...")
 corpusFile = 'voiceshell_audio_LUT.csv'
 
 with open(corpusFile, 'r') as f:
@@ -72,18 +72,18 @@ for line in all_lines:
     filename = line[1]
     audio_lookup_table[sentence] = filename
 print("Done.")
-# roboVoice("Starting speech recognition...")
+roboVoice("Starting speech recognition...")
 print("Starting up speech recognition...")
 r = sr.Recognizer()
 with sr.Microphone() as source:
     print("Calibrating microphone for ambient noise... (this will take 5 seconds)")
-    # roboVoice("Calibrating microphone for ambient noise... (this will take 5 seconds)")
+    roboVoice("Calibrating microphone for ambient noise... (this will take 5 seconds)")
     r.adjust_for_ambient_noise(source, duration=5)
     print("Done, starting program.")
-    # roboVoice("Done, starting program.")
+    roboVoice("Done, starting program.")
 
 def runLoop():
-    # roboVoice("I'm listening...")
+    roboVoice("I'm listening...")
     print("Say something!")
 
     with sr.Microphone() as source:
@@ -126,10 +126,10 @@ def runLoop():
 
         p.terminate
     except sr.UnknownValueError:
-        # roboVoice("Sorry, I couldn't understand that.")
+        roboVoice("Sorry, I couldn't understand that.")
         print("Sorry, I didn't understand that.")
     except sr.RequestError as e:
-        # roboVoice("Sphinx Error {0}".format(e))
+        roboVoice("Sphinx Error {0}".format(e))
         print("Sphinx recognition error; {0}".format(e))
 
 # setup()

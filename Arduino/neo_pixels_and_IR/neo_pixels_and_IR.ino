@@ -3,7 +3,7 @@
 #include <avr/power.h>
 #endif
 
-#define PIN 7
+#define PIN 3
 
 int current_color = 0;
 int dir = 1;
@@ -148,7 +148,27 @@ void sendValues() {
   Serial.println();
 }
 
+void serialReceive() {
+  bool stringComplete = false;
+  String msg = "";
+  while(Serial.available()) {
+    char in =  Serial.read();
+    if (in == '\n') {
+      stringComplete  = true;
+    }
+    else {
+      msg += in;
+    }
+    if (stringComplete == true){
+      setColorForStrip((int)in);
+      Serial.print("received : ");
+      Serial.println((int)in);
+    }
+  }
+}
+
 void loop() {
+  serialReceive();
   // slowly cycle through all the colors every second
   if (millis() > last_color_change + change_delay) {
     current_color = current_color + dir;
