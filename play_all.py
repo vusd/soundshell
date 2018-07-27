@@ -43,9 +43,6 @@ class PlaybackEngine():
             print("Please pass a Poem object into the play function")
 
     def playPart(self, poem, part, verbose=False):
-        v = GPIO.input(pot_pin)
-        print("volume : ", v)
-        if v > 0:
             p = pyaudio.PyAudio()
             if verbose is True:
                 print(poem.author,": ", poem.title,
@@ -57,8 +54,11 @@ class PlaybackEngine():
                             output=True)
             data = f.readframes(self.chunk)
             while data:
-                stream.write(data)
-                data = f.readframes(self.chunk)
+                v = GPIO.input(pot_pin)
+                # print("volume : ", v)
+                if v > 0:
+                    stream.write(data)
+                    data = f.readframes(self.chunk)
 
             stream.stop_stream()
             stream.close()
@@ -151,6 +151,7 @@ def loadCSV(csv_file):
 
 if __name__ == "__main__":
     # for the pot
+    time.sleep(1)
     pot_pin = 26
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(pot_pin, GPIO.IN)
