@@ -1,6 +1,6 @@
+#!/usr/bin/python3
 # this notebook is for developing the speech_recognition system
 from __future__ import unicode_literals
-import spacy
 import csv
 import numpy as np
 from numpy import dot
@@ -9,7 +9,7 @@ import wave, pyaudio, os, contextlib
 import regex as re
 import speech_recognition as sr
 from fuzzywuzzy import process
-import Rpi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from time import sleep
 
 print("Voiceshell starting...")
@@ -43,24 +43,27 @@ class PlaybackEngine():
             print("Please pass a Poem object into the play function")
 
     def playPart(self, poem, part, verbose=False):
-        p = pyaudio.PyAudio()
-        if verbose is True:
-            print(poem.author,": ", poem.title,
-                  " : line number ", part, " : ", poem.text[part])
-        f = wave.open(r""+poem.rec_paths[part],"rb")
-        stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
-                        channels=f.getnchannels(),
-                        rate=f.getframerate(),
-                        output=True)
-        data = f.readframes(self.chunk)
-        while data:
-            stream.write(data)
+        v = GPIO.input(pot_pin)
+        print("volume : ", v)
+        if v > 0:
+            p = pyaudio.PyAudio()
+            if verbose is True:
+                print(poem.author,": ", poem.title,
+                      " : line number ", part, " : ", poem.text[part])
+            f = wave.open(r""+poem.rec_paths[part],"rb")
+            stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
+                            channels=f.getnchannels(),
+                            rate=f.getframerate(),
+                            output=True)
             data = f.readframes(self.chunk)
+            while data:
+                stream.write(data)
+                data = f.readframes(self.chunk)
 
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-        # time.sleep(poem.durations[part])
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            # time.sleep(poem.durations[part])
 
     def playTitle(self, poem, verbose=False):
         if verbose is True:
@@ -71,9 +74,9 @@ class Poem():
     def __init__(self, first_line):
         """take in the first line which contains the name of the
         poem as well a the path to a recording of the name of the poem"""
-        self.title = nlp(first_line[0])
+        self.title = first_line[0]
         self.durations = []
-        self.rec_paths = [first_line[1]]
+        self.rec_paths = ["/home/pi/voiceshell/" + first_line[1]]
         self.text = [first_line[0]]
         self.full_text = ''
 
@@ -102,9 +105,9 @@ class Poem():
 
     def loadLine(self, line):
         """load in each individual line in the poem"""
-        self.text.append(nlp(line[0]))
+        self.text.append(line[0])
         self.full_text = self.full_text + " " + line[0]
-        self.rec_paths.append(line[1])
+        self.rec_paths.append("/home/pi/voiceshell/" + line[1])
         with contextlib.closing(wave.open(self.rec_paths[-1],'r')) as f:
             frames = f.getnframes()
             rate = f.getframerate()
@@ -154,13 +157,10 @@ if __name__ == "__main__":
     # more code taken from voiceshell.py
     print("Loading text...")
     # roboVoice("Loading text files...")
-    nlp = spacy.load('en')
-    csv_file = 'voiceshell_audio_LUT.csv'
+    csv_file = '/home/pi/voiceshell/voiceshell_audio_LUT.csv'
     pe = PlaybackEngine()
     poems = loadCSV(csv_file)
     print("Done.")
 
     while True:
-        print("volume : ", GPIO.input(pot_pin))
-        # pe.playAll(poems[1:], verbose=True)
-        sleep(0.1)
+        pe.playAll(poems[1:], verbose=True)
