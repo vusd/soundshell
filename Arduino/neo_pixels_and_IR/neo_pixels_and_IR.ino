@@ -6,20 +6,32 @@
 #define PIN 3
 
 int current_color = 0;
+int current_brightness = 0;
 int dir = 1;
 long last_color_change = millis();
-long change_delay = 1000;
-long ir_delay = 150;
+long change_delay = 15;
+long ir_delay = 350;
 long last_ir_polling = millis();
 int ir_readings[] = {0, 0};
 int ir_pins[] = {0, 1};
-int prox_pin = 2;
+int prox_pin = 5;
 int prox_reading = 0;
 int last_prox_reading = 0;
 
-int trig_pin = 13;
-int echo_pin = 12;
+// for the ultrasonic rangefinder
+int trig_pin = 2;
+int echo_pin = 4;
+float last_us_distance = 0.0;
 float us_distance = 0.0; // the distance reading from the ultrasonic
+long last_person_detected = millis();
+long interaction_delay = 5000;
+
+// for managing the NEO PIXELS
+int rec_direction = 1;
+int rec_bright = 55;
+const int PLAYBACK = 0;
+const int LISTENING = 1;
+int light_mode = 1; // 0 is playback // 1 is listening/recording
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -79,7 +91,8 @@ void colorWipe(uint32_t c, uint8_t wait) {
   }
 }
 
-void setColorForStrip(int color) {
+void setColorForStrip(int color, int brightness) {
+  strip.setBrightness(brightness);
   for (int i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, Wheel(color));
   }
@@ -151,59 +164,141 @@ void sendValues() {
 void serialReceive() {
   bool stringComplete = false;
   String msg = "";
-  while(Serial.available()) {
+  int c = 0;
+  int b = 0;
+  bool found_color = false;
+
+  while (Serial.available()) {
     char in =  Serial.read();
+    if (in == "F"){
+      light_mode = LISTENING;
+    }
+    // Serial.print(in);
     if (in == '\n') {
       stringComplete  = true;
+      current_brightness = msg.toInt();
+    }
+    else if (in == ',') {
+      found_color = true;
+      current_color = msg.toInt();
+      Serial.print("found color");
+      Serial.println(current_color);
+      msg = "";
     }
     else {
       msg += in;
     }
-    if (stringComplete == true){
-      setColorForStrip((int)in);
-      Serial.print("received : ");
-      Serial.println((int)in);
+
+    if (stringComplete == true) {
+      setColorForStrip(current_color, current_brightness);
+      Serial.print("Setting NeoPixels : ");
+      Serial.print(current_color);
+      Serial.print(" - ");
+      Serial.println(current_brightness);
     }
   }
 }
+
+
+void recordingLights() {
+  setColorForStrip(2, rec_bright);
+  rec_bright += rec_direction;
+  if (rec_bright > 255) {
+    rec_direction = -1;
+    rec_bright = 255;
+  }
+  if (rec_bright < 0) {
+    rec_direction = 1;
+    rec_bright = 0;
+  }
+}
+
+void playbackLights() {
+  setColorForStrip(150, rec_bright);
+  rec_bright += rec_direction;
+  if (rec_bright > 255) {
+    rec_direction = -1;
+    rec_bright = 255;
+  }
+  if (rec_bright < 0) {
+    rec_direction = 1;
+    rec_bright = 0;
+  }
+}
+
 
 void loop() {
   serialReceive();
-  // slowly cycle through all the colors every second
-  if (millis() > last_color_change + change_delay) {
-    current_color = current_color + dir;
-    // if color reaches limit change the dir
-    if (current_color > 254 || current_color < 1) {
-      dir = dir * -1;
+  if (light_mode == LISTENING) {
+    if (millis() > last_color_change + change_delay) {
+      recordingLights();
+      last_color_change = millis();
     }
-    last_color_change = millis();
-    /*
-    Serial.print("current color :");
-    Serial.println(current_color);
-    */
-    setColorForStrip(current_color);
+  } else if (light_mode == PLAYBACK) {
+    if (millis() > last_color_change + change_delay) {
+      playbackLights();
+      last_color_change = millis();
+    }
   }
   if (millis() > last_ir_polling + ir_delay) {
-    for (int i = 0; i < 2; i++) {
-      ir_readings[1] = analogRead(ir_pins[1]);
-      ir_readings[0] = analogRead(ir_pins[0]);
-      last_prox_reading = prox_reading;
-      prox_reading = digitalRead(prox_pin);
-      us_distance = readUltrasonicDistance();
-      /*
-      Serial.print(us_distance);
-      Serial.print("\t");
-      Serial.print(prox_reading);
-      Serial.print("\t");
-      Serial.print(ir_readings[0]);
-      Serial.print("\t");
-      Serial.println(ir_readings[0]);
-      */
-      last_ir_polling = millis();
-      if (prox_reading == 1 && last_prox_reading == 0) {
-        sendValues();
-      }
+    last_us_distance = us_distance;
+    us_distance = readUltrasonicDistance();
+    us_distance = (us_distance + last_us_distance) * 0.5;
+    // Serial.println(us_distance);
+    if (us_distance < 100 && last_us_distance < 100 && millis() > last_person_detected + interaction_delay) {
+      Serial.println("TRIG");
+      light_mode = PLAYBACK;
+      last_person_detected = millis();
     }
   }
 }
 
+// 
+// slowly cycle through all the colors every second
+/*
+  if (millis() > last_color_change + change_delay) {
+  current_color = current_color + dir;
+  // if color reaches limit change the dir
+  if (current_color > 254 || current_color < 1) {
+    dir = dir * -1;
+  }
+
+  last_color_change = millis();
+  /*
+    Serial.print("current color :");
+    Serial.println(current_color);
+
+  setColorForStrip(current_color);
+  }
+
+  // setColorForStrip(current_color, current_brightness);
+  if (millis() > last_ir_polling + ir_delay) {
+  ir_readings[1] = analogRead(ir_pins[1]);
+  ir_readings[0] = analogRead(ir_pins[0]);
+  last_prox_reading = prox_reading;
+  prox_reading = digitalRead(prox_pin);
+  last_us_distance = us_distance;
+  us_distance = readUltrasonicDistance();
+  us_distance = (us_distance + last_us_distance) * 0.5;
+
+  if (us_distance < 100 && last_us_distance < 100) {
+    Serial.println("TRIG");
+  } else {
+    /*
+    Serial.print(us_distance);
+    Serial.print("\t");
+    Serial.print(prox_reading);
+    Serial.print("\t");
+    Serial.print(ir_readings[0]);
+    Serial.print("\t");
+    Serial.println(ir_readings[0]);
+
+  }
+
+  last_ir_polling = millis();
+  if (prox_reading == 1 && last_prox_reading == 0) {
+    sendValues();
+  }
+  }
+  }
+*/

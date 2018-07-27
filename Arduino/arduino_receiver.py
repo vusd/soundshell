@@ -21,15 +21,14 @@ def connectToArduino():
             print("port : " + port)
 
     # and use that variable to connect to the arduino via serial
-    arduino = serial.Serial(arduino_port, 9600)
+    arduino = serial.Serial(arduino_port, 57600,timeout=0.1)
     return arduino
 
-def sendToArduino(msg):
-    msg = str(msg).encode()
-    print("msg is : ", type(msg), " ", msg)
-    for m in msg:
-        arduino.write(m)
-    arduino.write('\n')
+def sendToArduino(color, brightness):
+    msg = str(color) + "," + str(brightness) + '\n'
+    msg = msg.encode()
+    # print("msg is : ", type(msg), " ", msg)
+    arduino.write(msg)
 
 arduino = connectToArduino()
 # take note that each string ends with \n this is needed for the protocol to work
@@ -37,7 +36,15 @@ arduino = connectToArduino()
 
 while True:
     test_color = random.randint(0, 255)
-    print("test color is : ", test_color)
-    # print (arduino.readline()) # print out the arduinos response (should be message)
-    sendToArduino(test_color)
-    time.sleep(0.5)
+    test_brightness = random.randint(1, 255)
+    print("test color is : ", test_color, " - ", test_brightness)
+
+    # read the arduino
+    amsg = arduino.readline()[:-2]
+    if b"TRIG" in amsg:
+        print("Someone is detected") # print out the arduinos response (should be message)
+    elif amsg:
+        print(amsg)
+        pass
+    sendToArduino(test_color, test_brightness)
+    time.sleep(1);
