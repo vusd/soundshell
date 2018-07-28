@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # this notebook is for developing the speech_recognition system
 from __future__ import unicode_literals
+import pyttsx3
 import csv
 import numpy as np
 from numpy import dot
@@ -11,6 +12,7 @@ import speech_recognition as sr
 from fuzzywuzzy import process
 import RPi.GPIO as GPIO
 from time import sleep
+import subprocess
 
 print("Voiceshell starting...")
 # roboVoice("Ahem. Starting...")
@@ -54,16 +56,12 @@ class PlaybackEngine():
                             output=True)
             data = f.readframes(self.chunk)
             while data:
-                v = GPIO.input(pot_pin)
-                # print("volume : ", v)
+                v = GPIO.input(but_pin)
+                data = f.readframes(self.chunk)
                 if v > 0:
                     stream.write(data)
-                    data = f.readframes(self.chunk)
-
             stream.stop_stream()
             stream.close()
-            p.terminate()
-            # time.sleep(poem.durations[part])
 
     def playTitle(self, poem, verbose=False):
         if verbose is True:
@@ -149,12 +147,27 @@ def loadCSV(csv_file):
             poems[-1].loadLine(line)
     return poems
 
+def roboVoice(statement):
+    engine = pyttsx3.init();
+    rate = engine.getProperty('rate')
+    engine.setProperty('rate', rate-25)
+    engine.setProperty('voice', 'en-uk-rp')
+    engine.say(statement)
+    engine.runAndWait()
+
+def setMixerAmp(val):
+    command  = ["amixer", "sset", "'Master'", "{}%".format(val)]
+    subprocess.run(command)
+
 if __name__ == "__main__":
+
     # for the pot
-    time.sleep(1)
-    pot_pin = 26
+    sleep(1)
+    setMixerAmp(20)
+    roboVoice("booting system... please wait")
+    but_pin = 26
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(pot_pin, GPIO.IN)
+    GPIO.setup(but_pin, GPIO.IN)
     # more code taken from voiceshell.py
     print("Loading text...")
     # roboVoice("Loading text files...")
@@ -164,4 +177,4 @@ if __name__ == "__main__":
     print("Done.")
 
     while True:
-        pe.playAll(poems[1:], verbose=True)
+        pe.playAll(poems, verbose=True)
