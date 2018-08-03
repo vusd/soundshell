@@ -1,20 +1,27 @@
 from __future__ import unicode_literals
+from time import sleep
 import pyttsx3
 import csv
 import wave, pyaudio, os, contextlib
 import regex as re
 import RPi.GPIO as GPIO
 import subprocess
+import Adafruit_ADS1x15
 
-
+# for the button
 but_pin = 26
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(but_pin, GPIO.IN)
+print("Voiceshell starting...")
+
+# for the volume pot
+adc = Adafruit_ADS1x15.ADS1015()
+GAIN = 1
 
 class PlaybackEngine():
-    def __init__(self):
+    def __init__(self, volume):
         self.chunk = 1024
-        # self.player = instance.media_player_new()
+        self.sys_volume = volume
 
     def playAll(self, poem, verbose=False):
         if type(poem) is list:
@@ -26,6 +33,10 @@ class PlaybackEngine():
                     if verbose is True:
                         print(p.text[i], " : ", p.durations[i])
                     self.playPart(p, i)
+                v = GPIO.input(but_pin)
+                print("skipp button reads: ", v)
+                if v > 0:
+                    sleep(3)
         elif type(poem) is Poem:
             self.playTitle(poem)
             if verbose is True:
@@ -49,10 +60,14 @@ class PlaybackEngine():
                             output=True)
             data = f.readframes(self.chunk)
             while data:
+                self.sys_volume = checkVolumeKnob(self.sys_volume)
                 v = GPIO.input(but_pin)
                 data = f.readframes(self.chunk)
+                # if the skip button is not being pressed play back the audio
                 if v > 0:
                     stream.write(data)
+                else:
+                    break
             stream.stop_stream()
             stream.close()
 
@@ -151,3 +166,17 @@ def roboVoice(statement):
 def setMixerAmp(val):
     command  = ["amixer", "sset", "'Master'", "{}%".format(val)]
     subprocess.run(command)
+
+def checkVolumeKnob(sys_volume):
+    # read the potentiometer
+    temp = adc.read_adc(0, gain=GAIN)
+    # scale the value from 0 -80
+    # we dont want to push the system too hard
+    normalized = temp/2047 * 80
+    # if there is a 2 point or greater change
+    # basically adding historesis
+    if abs(normalized - sys_volume) > 2:
+        print("adjusting system volume to :", normalized)
+        setMixerAmp(normalized)
+        return normalized
+    return sys_volume

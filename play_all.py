@@ -2,22 +2,14 @@
 # this notebook is for developing the speech_recognition system
 from vsutils import *
 
-print("Voiceshell starting...")
-# roboVoice("Ahem. Starting...")
-
-# a class to handle playback
-
 if __name__ == "__main__":
-
     # for the pot
     sleep(1)
-    setMixerAmp(20)
+    setMixerAmp(35)
     roboVoice("booting system... please wait")
-    # more code taken from voiceshell.py
     print("Loading text...")
-    # roboVoice("Loading text files...")
     csv_file = '/home/pi/voiceshell/voiceshell_audio_LUT.csv'
-    pe = PlaybackEngine()
+    pe = PlaybackEngine(35)
     poems = loadCSV(csv_file)
     print("Done.")
 
