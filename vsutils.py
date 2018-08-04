@@ -18,6 +18,10 @@ print("Voiceshell starting...")
 adc = Adafruit_ADS1x15.ADS1015()
 GAIN = 1
 
+# for the power switch
+pwr_pin = 13
+GPIO.setup(pwr_pin, GPIO.IN)
+
 class PlaybackEngine():
     def __init__(self, volume):
         self.chunk = 1024
@@ -180,3 +184,13 @@ def checkVolumeKnob(sys_volume):
         setMixerAmp(normalized)
         return normalized
     return sys_volume
+
+def checkPowerSwitch():
+    if GPIO.input(pwr_pin) == 0:
+        powerDownSystem()
+
+def powerDownSystem():
+    roboVoice("shutting down system, please wait 5 seconds before unplugging power")
+    command = ["sudo", "shutdown", "-h", "now"]
+    subprocess.run(command)
+
