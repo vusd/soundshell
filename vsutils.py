@@ -65,6 +65,7 @@ class PlaybackEngine():
             data = f.readframes(self.chunk)
             while data:
                 self.sys_volume = checkVolumeKnob(self.sys_volume)
+                checkPowerSwitch()
                 v = GPIO.input(but_pin)
                 data = f.readframes(self.chunk)
                 # if the skip button is not being pressed play back the audio
