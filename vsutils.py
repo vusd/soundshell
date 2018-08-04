@@ -22,6 +22,11 @@ GAIN = 1
 pwr_pin = 13
 GPIO.setup(pwr_pin, GPIO.IN)
 
+# for the proximity sensor
+prox_pin = 5
+GPIO.setup(prox_pin, GPIO.IN)
+
+
 class PlaybackEngine():
     def __init__(self, volume):
         self.chunk = 1024
@@ -30,17 +35,21 @@ class PlaybackEngine():
     def playAll(self, poem, verbose=False):
         if type(poem) is list:
             for p in poem:
-                if verbose is True:
-                    print("----------------------------------------")
-                    print(p.author,": ", p.title, " : ", p.total_duration)
-                for i, media in enumerate(p.rec_paths):
+                # if someone is detected then play the next poem, else simply wait for someone to arrive
+                if checkProximitySensor():
                     if verbose is True:
-                        print(p.text[i], " : ", p.durations[i])
-                    self.playPart(p, i)
-                v = GPIO.input(but_pin)
-                print("skipp button reads: ", v)
-                if v > 0:
-                    sleep(3)
+                        print("----------------------------------------")
+                        print(p.author,": ", p.title, " : ", p.total_duration)
+                    for i, media in enumerate(p.rec_paths):
+                        if verbose is True:
+                            print(p.text[i], " : ", p.durations[i])
+                        self.playPart(p, i)
+                    v = GPIO.input(but_pin)
+                    print("skipp button reads: ", v)
+                    if v > 0:
+                        sleep(3)
+                else:
+                    sleep(0.1)
         elif type(poem) is Poem:
             self.playTitle(poem)
             if verbose is True:
@@ -191,7 +200,11 @@ def checkPowerSwitch():
         powerDownSystem()
 
 def powerDownSystem():
-    roboVoice("shutting down system, please wait 5 seconds before unplugging power")
+    roboVoice("shutting down system, please wait 15 seconds before unplugging power")
     command = ["sudo", "shutdown", "-h", "now"]
     subprocess.run(command)
 
+def checkProximitySensor():
+    if GPIO.input(prox_pin) > 0:
+        return 1
+    return 0
