@@ -180,7 +180,6 @@ def loadCSV(csv_file):
             poems[-1].loadLine(line)
     return poems
 
-
 def getAllLines(poems, tokens=False):
     sents = []
     for p in poems:
